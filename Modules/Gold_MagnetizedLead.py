@@ -80,9 +80,9 @@ H_at_ev_soc = r2v_soc(np.diag(energies))
 # In[4]:
 
 
-import sys
-sys.path.insert(0, '/Users/khhuisman/Documents/Jupyter_notebooks/py_files')
-import onsite_soc
+#import path to modules here.
+# import sys
+# sys.path.insert(0,'path_to_modules')
 
 
 # In[5]:
