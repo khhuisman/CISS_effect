@@ -84,6 +84,8 @@ H_at_ev_soc = r2v_soc(np.diag(energies))
 # import sys
 # sys.path.insert(0,'path_to_modules')
 
+import onsite_soc
+
 
 # In[5]:
 
