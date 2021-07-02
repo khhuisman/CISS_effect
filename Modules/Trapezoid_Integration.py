@@ -74,10 +74,7 @@ def findh_upper(h,energies):
 # Given an energy l, and a list energies.
 # 1. Returns the index n & energy $e[n]$ for which: $e[n]-de <= l < e[n] $
 # 2. If h > max(energies) $ = e_{max}$ ,h < min(energies) $ = e_{min}$  returns $ len(energies)-1 \ \&  \ e_{max}$, $ 0 \ \& \  e_{min}$ respectively
-# 
-# 
-# 
-# 
+
 
 # In[309]:
 
@@ -252,16 +249,3 @@ def calculate_integral(muh,mul,energies,Tif_list,Tif_energy,*args):
     I_if_total = (Ih_if + Il_if )*np.sign(muh-mul) + Im_if_trapz
     
     return I_if_total
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
