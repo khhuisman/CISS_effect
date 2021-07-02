@@ -18,6 +18,11 @@ import numpy as np
 # For matrix support
 import tinyarray
 
+
+#import path to modules here.
+# import sys
+# sys.path.insert(0,'path_to_modules')
+
 # define Pauli-matrices for convenience
 sigma_0 = tinyarray.array([[1, 0], [0, 1]])
 sigma_x = tinyarray.array([[0, 1], [1, 0]])
@@ -77,12 +82,6 @@ H_at_ev_soc = r2v_soc(np.diag(energies))
 
 # Onsite SOC is generated, only d orbitals feel SOC.
 
-# In[4]:
-
-
-import sys
-sys.path.insert(0, '/Users/khhuisman/Documents/Jupyter_notebooks/py_files')
-import onsite_soc
 
 
 # In[5]:
