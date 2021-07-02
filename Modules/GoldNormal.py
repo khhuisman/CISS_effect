@@ -82,7 +82,7 @@ H_at_ev_soc = r2v_soc(np.diag(energies))
 
 # Onsite SOC is generated, only d orbitals feel SOC.
 
-
+import onsite_soc
 
 # In[5]:
 
