@@ -31,9 +31,9 @@ sigma_n = tinyarray.array([[0, 0], [0, 0]])
 
 # In[2]:
 
-
-import sys
-sys.path.insert(0, '/Users/khhuisman/Documents/Jupyter_notebooks/py_files')
+#import path to modules here.
+# import sys
+# sys.path.insert(0,'path_to_modules')
 
 
 # # Plot Functions
