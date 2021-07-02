@@ -113,8 +113,9 @@ def REM(i,r,b,chirality_left = True):
 # # Onsite Hamiltonian
 
 # In[4]:
-import sys
-sys.path.insert(0, '/Users/khhuisman/Documents/Jupyter_notebooks/py_files')
+#import path to modules here.
+# import sys
+# sys.path.insert(0,'path_to_modules')
 
 import onsite_soc
 
