@@ -22,9 +22,8 @@ import time
 # In[2]:
 
 
-#import path to modules here.
-# import sys
-# sys.path.insert(0,'path_to_modules')
+import sys
+sys.path.insert(0, '/Users/khhuisman/Documents/Jupyter_notebooks/py_files')
 
 
 # #### Functions
@@ -569,6 +568,12 @@ def currents_leadi_probe(lead_i,muB_list,ef,V,nleads,energies,list_tags_transmis
 
 
 
+############################################################################################################################
+#                         """" The following code calculates the charge current at finite temperature."""""
+############################################################################################################################
+
+
+
 ## Current for finite temperature.
 
 
@@ -579,7 +584,7 @@ def fermi_dirac(beta,mui,energy):
     if beta < 10**9:
         fd = 1/(np.exp(beta*(energy-mui) ) + 1 )
         return fd
-    if beta >= 10**9:
+    if beta == np.infty:
         fd = np.heaviside(-(energy-mui),1) 
         return fd
 
@@ -624,7 +629,7 @@ def Tbar_ji_energy(energy,beta,mu,leadj,leadi,
 
 
 def weighted_transmissions(lead_i,nleads,
-                           beta,ef,V,muB_list,
+                           beta_lists,mu_list_object,
                           list_tags_transmissions,energies):
     
     """Input: a) list transmissions from lead i to lead j (Tij) and list of transmissions from j to i Tji 
@@ -648,10 +653,9 @@ def weighted_transmissions(lead_i,nleads,
     leads_j_tags = tags_list(nleads, lead_i)
 
     # generate chemical potentials for lead 0,1,2,...
-    mu_list_object = mu_list_generate(muB_list,ef,V,nleads)
-
-#     # Chemical potential for lead_i
-#     mu_i = mu_list_object[lead_i]
+    mu_list_object = mu_list_object
+    beta_lists = beta_lists
+    
 
 
     for n in range(len(energies)):
@@ -660,7 +664,8 @@ def weighted_transmissions(lead_i,nleads,
         energy = energies[n]
 
         # Calculate fermi-dirac functions for lead 0,1,2,...
-        fd_list = [ fermi_dirac(beta,mu_i,energy) for mu_i in mu_list_object]
+        
+        fd_list = [fermi_dirac(beta_lists[i],mu_list_object[i],energy) for i in range(nleads)]
 
         for j in range(j_leads):
 
@@ -688,10 +693,24 @@ def weighted_transmissions(lead_i,nleads,
 
 
 
-############################################################################################################################
-#                         """" The following code calculates the charge current at finite temperature."""""
-############################################################################################################################
-# Weighted current
+
+#list of betas
+def generate_betas(betasB_list,betaL= np.infty,betaR= np.infty):
+    
+    # We assume a default temperature of 0 for the left,right lead
+
+    beta_lists = []
+
+    beta0 = betaL
+    beta1 = betaR
+
+    beta_lists.append(beta0)
+    beta_lists.append(beta1)
+
+    for n in range(len(betasB_list)):
+        beta_lists.append(betasB_list[n])
+
+    return beta_lists
 
 # mu_j_list = list of chemical potential corresponding to the leads in lead T_ij_list_n
 # mu_i = chemical potential of lead i.
@@ -699,7 +718,8 @@ def weighted_transmissions(lead_i,nleads,
 # systemf = finalized Kwant system.
 
 
-def Ibari_current(beta,mu_i,mu_j_list,
+def Ibari_current(beta_i,beta_j_list,
+                  mu_i,mu_j_list,
                tag_list_ij,tag_list_ji,
                energies,
                Tij_list_n,Tji_list_n,
@@ -723,7 +743,8 @@ def Ibari_current(beta,mu_i,mu_j_list,
         
         
         Iij_new = Trapezoid_Integration.calculate_integral(10**8,-10**8,energies,Tij_list,Tbar_ij_energy,
-                                                           beta,mu_i,
+                                                           beta_i,
+                                                           mu_i,
                                                            leadi,leadj, systemf)
         
         Iij_list.append(Iij_new)
@@ -739,6 +760,7 @@ def Ibari_current(beta,mu_i,mu_j_list,
         
         
         muj = mu_j_list[n]
+        betaj = beta_j_list[n]
         
         leadj = tags[0]
         leadi = tags[1]
@@ -746,7 +768,7 @@ def Ibari_current(beta,mu_i,mu_j_list,
 
         
         Iji_new = Trapezoid_Integration.calculate_integral(10**8,-10**8,energies,Tji_list,Tbar_ji_energy,
-                                                           beta,muj,
+                                                           betaj,muj,
                                                            leadj,leadi, systemf)
         
         Iji_list.append(Iji_new)
@@ -761,30 +783,44 @@ def Ibari_current(beta,mu_i,mu_j_list,
 
 
 
-def current_bar_leadi(lead_i,beta,muB_list,ef,V,nleads,energies,list_tags_transmissions,systf,print_bool=False):
+def current_bar_leadi(lead_i,betasB_list,muB_list,ef,V,nleads,energies,
+                      list_tags_transmissions,systf,
+                      print_bool=False,betaL=np.infty,betaR=np.infty):
+    
+    
+    # Generate betas for voltage V
+    beta_lists = generate_betas(betasB_list,betaL,betaR)
+   
+    # Generate mus for voltage V
+    mu_list_object = mu_list_generate(muB_list,ef,V,nleads)
+    
+    
     
     # Weigh transmissions with Fermi-Dirac functions
     Tij_list,tag_list_ij, Tji_list,tag_list_ji = weighted_transmissions(lead_i,nleads,
-                           beta,ef,V,muB_list,
-                          list_tags_transmissions,energies)
+                                                       beta_lists,mu_list_object,
+                                                      list_tags_transmissions,energies)
     
-    # generate chemical potentials for lead 0,1,2,...
-    mu_list_object = mu_list_generate(muB_list,ef,V,nleads)
+    
 
 
     # Generate tags j for lead i s.t. the chemical potential muj corresponds to the correct transmission
     tagsi_j_list = tags_list(nleads, lead_i)
     
-    # Relevant mus for voltage V
-    mui_j_list = [ mu_list_object[n] for n in tagsi_j_list]
+    #mus,betas for lead i
+    mui_j_list = [mu_list_object[n] for n in tagsi_j_list]
+    betai_j_list = [beta_lists[n] for n in tagsi_j_list]
+
+
     mui = mu_list_object[lead_i]
-    
-    # Current into lead i  
-    Ii_cur = Ibari_current(beta,mui,mui_j_list,
+    betai = beta_lists[lead_i]
+
+    Ii_cur =  Ibari_current(betai,betai_j_list,
+                            mui,mui_j_list,
                tag_list_ij,tag_list_ji,
                energies,
                Tij_list,Tji_list,
-               systf,nleads)
+                   systf,nleads)
     
 
 
@@ -792,35 +828,43 @@ def current_bar_leadi(lead_i,beta,muB_list,ef,V,nleads,energies,list_tags_transm
 
 
 
-def currents_bar_B_probe(muB_list,beta,ef,V,nleads,list_tags_transmissions,energies,systf,print_bool=False):
+def currents_bar_B_probe(muB_list,betasB_list,ef,V,nleads,
+                         list_tags_transmissions,energies,systf,
+                         print_bool=False,betaL=np.infty,betaR=np.infty):
     
     list_currents_bar_B_probe = []
     
-    
+    # Generate betas for voltage V
+    beta_lists = generate_betas(betasB_list,betaL,betaR)
    
-    
+    # Generate mus for voltage V
+    mu_list_object = mu_list_generate(muB_list,ef,V,nleads)
     
     # We only have Buttiker probes for n>=2
     for lead_i in range(2,nleads):
         
         #Pick out WEIGHTED transmissions for lead_i
         Tij_list,tag_list_ij, Tji_list,tag_list_ji =  weighted_transmissions(lead_i,nleads,
-                                                       beta,ef,V,muB_list,
+                                                       beta_lists,mu_list_object,
                                                       list_tags_transmissions,energies)
         
         
         
-        # Generate mus for voltage V
-        mu_list_object = mu_list_generate(muB_list,ef,V,nleads)
+        
 
         # Generate tags j for lead i s.t. the chemical potential muj corresponds to the correct transmission
         tagsi_j_list = tags_list(nleads, lead_i)
 
         #mus for lead i
         mui_j_list = [mu_list_object[n] for n in tagsi_j_list]
+        betai_j_list = [beta_lists[n] for n in tagsi_j_list]
+        
+        
         mui = mu_list_object[lead_i]
+        betai = beta_lists[lead_i]
 
-        Ii_cur =  Ibari_current(beta,mui,mui_j_list,
+        Ii_cur =  Ibari_current(betai,betai_j_list,
+                                mui,mui_j_list,
                    tag_list_ij,tag_list_ji,
                    energies,
                    Tij_list,Tji_list,
