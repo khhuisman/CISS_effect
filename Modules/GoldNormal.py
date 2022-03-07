@@ -511,8 +511,6 @@ def make_fcc_lead_chiral_hop(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0,quanti
     def sys_gold(nlayers,Txz,Tyz,xi_d,Txy):
 
         sys = kwant.Builder()  
-        
-        
         H_onsite = np.add(H_at_ev_soc,H_SO(xi_d)) + delta_e*np.identity(18)
         
 
@@ -520,8 +518,6 @@ def make_fcc_lead_chiral_hop(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0,quanti
 
 
         #FCC lattice
-        
-
         sys[(lat_fcc(d ,j,k) for d in range(Txy, Txy+nlayers) 
                              for j in range(0,Txz) 
                              for k in range(0,Tyz))] = H_onsite

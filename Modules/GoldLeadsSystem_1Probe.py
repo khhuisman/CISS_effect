@@ -211,7 +211,7 @@ def family_color(site):
 # In[66]:
 #System with 1 probe attached
 
-def make_system_toy_1B(nlayers=3, xi_d=0.6,xi_p = 0.006,
+def make_system_toy_1B_right(nlayers=3, xi_d=0.6,xi_p = 0.006,
                 Txz=3,Tyz=3, d_L= 50,
                  txz_left_1=0,tyz_left_1=0,
                 txz_left_2=1,tyz_left_2=1,
@@ -281,12 +281,165 @@ def make_system_toy_1B(nlayers=3, xi_d=0.6,xi_p = 0.006,
 
     if chirality_left == True:
     #create leads
-        sys_gold = Gold_MagnetizedLead.make_fcc_lead_magnetized(nlayers, Txz,Tyz,d_L, xi_d,delta_e,B)
+        sys_gold = Gold_MagnetizedLead.make_fcc_lead_magnetized_right(nlayers, Txz,Tyz,d_L, xi_d,delta_e,B)
     if chirality_left == False:
         
         #if the chirality of the molecule is flipped: y->-y 
         # under this transformation the hopping matrices of gold change accordingly: H_{x,y,z} -> H_{x,-y,z}
-        sys_gold = Gold_MagnetizedLead.make_fcc_lead_chiral_magnetized(nlayers, Txz,Tyz,d_L, xi_d,delta_e,B)
+        sys_gold = Gold_MagnetizedLead.make_fcc_lead_chiral_magnetized_right(nlayers, Txz,Tyz,d_L, xi_d,delta_e,B)
+
+    #create helicene molecule with Buttiker probe
+    sys_hel = HeliceneSystem_1Bprobe.make_helicene_buttiker(nrings,xi_p,tvec,E_z,
+                                                      r,b,zstart,chirality_left ,
+                                                         u,u,u+7.5, u0,t0,attpos,attposM,attposE1,attposE2)
+    #add gold system and helicene
+    sys_gold.update(sys_hel)
+    H_S_onsite = np.kron(np.diag([Es,Es,Es]) ,np.identity(2))
+    
+    
+    ### Create Sulfur atoms ###
+    # Sulfur atoms
+    sys_gold[lat_sulfur(1+tvec-1,1+tvec-1,zstart+1)] = H_S_onsite  
+    sys_gold[lat_sulfur(L_m + tvec+2,L_m+tvec+2,zstart+1)] = H_S_onsite  
+    
+    
+    
+    ### Au - S hopping ### 
+    # Au{1,2,3} -S interface 
+    
+    HAU1  = Coupling_Au_S_C.HAUS(1,chirality_left)
+    HAU2  = Coupling_Au_S_C.HAUS(2,chirality_left)
+    HAU3  = Coupling_Au_S_C.HAUS(3,chirality_left)
+
+
+    #LEFT
+    sys_gold[lat_fcc(nlayers-1,txz_left_1,tyz_left_1),
+             lat_sulfur(1+tvec-1,1+tvec-1,zstart+1)] = \
+                HAU1
+    sys_gold[lat_fcc(nlayers-1,txz_left_2,tyz_left_2),
+             lat_sulfur(1+tvec-1,1+tvec-1,zstart+1)] = \
+                HAU2
+    sys_gold[lat_fcc(nlayers-1,txz_left_3,tyz_left_3),
+             lat_sulfur(1+tvec-1,1+tvec-1,zstart+1)] = \
+                HAU3
+    
+    #RIGHT
+    sys_gold[lat_fcc( d_L,txz_right_1,tyz_right_1),
+             lat_sulfur(L_m + tvec+ 2, L_m+tvec+2,zstart+1)] = \
+            HAU1
+    sys_gold[lat_fcc( d_L,txz_right_2,tyz_right_2),
+             lat_sulfur(L_m + tvec+ 2, L_m+tvec+2,zstart+1)] = \
+            HAU2
+    sys_gold[lat_fcc( d_L,txz_right_3,tyz_right_3),
+             lat_sulfur(L_m + tvec+2,L_m+tvec+2,zstart+1)] = \
+            HAU3
+
+    
+     
+    ### C-S Hopping ###
+    HCS = Coupling_Au_S_C.HCS_mirrored(chirality_left)
+    # S - C interface 
+    sys_gold[lat(tvec+1,tvec+1,zstart),
+             lat_sulfur(1+tvec-1,1+tvec-1,zstart+1)]= \
+            HCS
+    sys_gold[lat(L_m + tvec,L_m+tvec,zstart),
+             lat_sulfur(L_m + tvec+2,L_m+tvec+2,zstart+1)]= \
+            HCS
+    
+    
+    if plot_left == True:
+        Gold_MagnetizedLead.plot_attachement_sulfur(Txz,Tyz, 
+                                              txz_left_1,tyz_left_1, 
+                                              txz_left_2,tyz_left_2,
+                                               txz_left_3,tyz_left_3)
+    if plot_right == True:
+        Gold_MagnetizedLead.plot_attachement_sulfur(Txz,Tyz, txz_right_1,tyz_right_1, 
+                                                txz_right_2,tyz_right_2,
+                                                txz_right_3,tyz_right_3)
+
+
+                     
+    
+    return sys_gold
+
+
+
+def make_system_toy_1B_left(nlayers=3, xi_d=0.6,xi_p = 0.006,
+                Txz=3,Tyz=3, d_L= 50,
+                 txz_left_1=0,tyz_left_1=0,
+                txz_left_2=1,tyz_left_2=1,
+                txz_left_3=0,tyz_left_3=1,
+                plot_left = False,
+                txz_right_1=0,tyz_right_1=0, 
+                txz_right_2=1,tyz_right_2=1,
+                txz_right_3=0,tyz_right_3=1,
+                plot_right = False,
+                nrings =6 ,tvec=3,E_z=0,r=1.4,zstart=0,b=3.6,
+                chirality_left=True,
+                u=-8.1,delta_e=-12.6,Es=-6.21,
+                           B=1,u0=0,t0=10,attpos=0,attposM=0,attposE1=0,attposE2=0):
+    
+    """ 
+    Input:
+    Input:
+    
+    Gold lead paratemers:
+        - nlayers = thickness of the layers of gold atoms that feel SOC
+        - xi_d = SOC parameter of 5d orbitals of gold
+        - delta_e = shift in onsite energies of gold to align it to the proper fermi level.
+        - Txz, Tyz = dimensions of the plain gold atoms that feel SOC
+        - d_L = distance between the two blocks of gold atoms.
+        - B = magnetization of the left lead
+        
+        
+    Sulfur-Gold parameters:
+        - Es = onsite energy of 3p orbitals in eV.
+        - txz_left_i,tyz_left_i = attachement position of the sulfur atom to gold atom 'i' at the left gold-sulfur interface
+        - txz_right_i,tyz_right_i = attachement position of the sulfur atom to gold atom 'i' at the right gold-sulfur interface
+        - plot_left/plot_right = plot of the attachement position on the left/right gold surface
+    
+    Helicene parameters:
+        - nrings = number benzene rings
+        - xi_p = SOC parameter of 2p orbitals of carbon
+        - tvec = parameter to move helicene molecule in the xy diraction.
+        - E_z = electric field felt by helicene molecule
+        - r = radius of benzene rings
+        - b = pitch of the helix.
+        - u = onsite shift in energies of carbon s.t. helicene is electrically neutral
+        
+        
+        
+   Buttiker probe:
+       - u0 = onsite energy of Buttiker probe
+       - t0 = hopping parameter of Buttiker probe. 
+       - attpos,attposM,attposE1,attposE2: parameters which tell to which carbon atom the probe is attached.
+    
+    
+    
+    
+    
+    Output:
+        - Kwant system of the Gold -S- Helicene - S-Gold junction, with 1 Buttiker probe attached to a carbon atom of helicene.
+    """
+    
+    lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
+    
+    L_m = int(3*nrings+1)
+    lat = kwant.lattice.cubic(a=1,norbs =8)
+    lat_sulfur = kwant.lattice.cubic(a=1,norbs =6)
+
+
+    if chirality_left == True:
+    #create leads
+        sys_gold = Gold_MagnetizedLead.make_fcc_lead_magnetized_left(nlayers, Txz,Tyz,d_L, xi_d,delta_e,B)
+    if chirality_left == False:
+        
+        #if the chirality of the molecule is flipped: y->-y 
+        # under this transformation the hopping matrices of gold change accordingly: H_{x,y,z} -> H_{x,-y,z}
+        sys_gold = Gold_MagnetizedLead.make_fcc_lead_chiral_magnetized_left(nlayers, Txz,Tyz,d_L, xi_d,delta_e,B)
 
     #create helicene molecule with Buttiker probe
     sys_hel = HeliceneSystem_1Bprobe.make_helicene_buttiker(nrings,xi_p,tvec,E_z,

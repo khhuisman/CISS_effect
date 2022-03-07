@@ -3,6 +3,11 @@
 
 # # Import Packages
 
+
+#import path to modules here.
+# import sys
+# sys.path.insert(0,'path_to_modules')
+
 # In[1]:
 
 
@@ -80,9 +85,6 @@ H_at_ev_soc = r2v_soc(np.diag(energies))
 # In[4]:
 
 
-#import path to modules here.
-# import sys
-# sys.path.insert(0,'path_to_modules')
 
 import onsite_soc
 
@@ -350,7 +352,9 @@ H_m100_eV_soc = r2v_soc(Hhoptot[17])
 # In[14]:
 
 
-def make_fcc_lead_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=-12.6,B=1,quantization_axis=sigma_z):
+
+
+def make_fcc_lead_magnetized_left(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=-12.6,B=1,quantization_axis=sigma_z):
     
     
     """
@@ -364,8 +368,7 @@ def make_fcc_lead_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=-12.6,B=
     - quantization_axis = axis along which spins are quantized. 
     Ouput:
     - finalzed kwant system which contains two blocks of gold atoms with dimensions nlayers X Txz X Tyz.
-    - Each block has a lead attached. The left lead can be magnetized.
-    
+    - Each block has a lead attached. The left lead (lead0 ) is magnetized. The right lead (lead 1) is not magnetized.
     """
     
     
@@ -441,10 +444,49 @@ def make_fcc_lead_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=-12.6,B=
     
     
     
-     # Lead 
-    lead1_sym =  kwant.TranslationalSymmetry((-0.5,-0.5,0))
+     # Lead0: Magnetized 
+    lead0_sym =  kwant.TranslationalSymmetry((-0.5,-0.5,0))
+    lead0 = kwant.Builder(lead0_sym, conservation_law = sigmaz_18) 
+    lead0[(lat_fcc(0,j,k)  
+                         for j in range(0,Txz) 
+                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18)  + B*sigmazz_18
+          
+            
+            
+    #lead0 hopping
+    #     hopping in x direction
+    lead0[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
+    #     hopping in y direction
+    lead0[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_010_eV_soc
+    #     hopping in z direction
+    lead0[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+
+    
+    
+    # Diagonal hopping
+    #xy direction
+    lead0[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_110_eV_soc
+    # x(-)y direction
+    lead0[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
+    
+    #hopping yz
+    lead0[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_011_eV_soc
+    #hopping y(-)z:V
+    lead0[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_01m1_eV_soc
+    
+    #hopping xz
+    lead0[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
+    #hopping x(-)z:V
+    lead0[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
+                         
+    
+    sys.attach_lead(lead0)
+    
+    
+    # UnMagnetized: Lead1 
+    lead1_sym =  kwant.TranslationalSymmetry((0.5,0.5,0))
     lead1 = kwant.Builder(lead1_sym, conservation_law = sigmaz_18)
-    lead1[(lat_fcc(0,j,k)  
+    lead1[(lat_fcc(d_L+nlayers,j,k)  
                          for j in range(0,Txz) 
                          for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18) 
           
@@ -475,48 +517,178 @@ def make_fcc_lead_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=-12.6,B=
     lead1[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
     #hopping x(-)z:V
     lead1[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
-                         
+    
     
     sys.attach_lead(lead1)
     
+    return sys
+
+def make_fcc_lead_magnetized_right(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=-12.6,B=1,quantization_axis=sigma_z):
     
-    # Magnetized: Lead 
-    lead2_sym =  kwant.TranslationalSymmetry((0.5,0.5,0))
-    lead2 = kwant.Builder(lead2_sym, conservation_law = sigmaz_18)
-    lead2[(lat_fcc(d_L+nlayers,j,k)  
+    
+    """
+    Input:
+    - nlayers = thickness of the layers of gold atoms that feel SOC
+    - Txz, Tyz = dimensions of the plain gold atoms that feel SOC
+    - d_L = distance between the two blocks of gold atoms.
+    - xi_d = SOC parameter of 5d orbitals of gold
+    - delta_e = shift in onsite energies of gold to align it to the proper fermi level.
+    - B = magnetization of the left lead
+    - quantization_axis = axis along which spins are quantized. 
+    Ouput:
+    - finalzed kwant system which contains two blocks of gold atoms with dimensions nlayers X Txz X Tyz.
+    - Each block has a lead attached. The right lead (lead1 ) is magnetized. The left lead (lead 0) is not magnetized.
+    """
+    
+    
+    lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
+    
+    
+     
+    sigma_18 = np.identity(18)
+    sigmaz_18 = np.kron(np.identity(9),quantization_axis) 
+    sigmazz_18 = np.kron(np.identity(9),sigma_z) 
+    
+    #n_layers = number of layers with strong SOC
+    # Txy = Start value for the gold layer in xy plane.
+     
+    # Make a block of shape nlayers*Txz*Tyz with onsite soc xi_d.
+    def sys_gold(nlayers,Txz,Tyz,xi_d,Txy):
+        
+
+        sys = kwant.Builder()  
+        
+        
+        H_onsite = np.add(H_at_ev_soc,H_SO(xi_d)) + delta_e*np.identity(18) 
+         
+
+       
+
+
+        #FCC lattice
+        
+
+        sys[(lat_fcc(d ,j,k) for d in range(Txy, Txy+nlayers) 
+                             for j in range(0,Txz) 
+                             for k in range(0,Tyz))] = H_onsite
+
+
+        #Lattice hopping
+        #     hopping in x direction
+        sys[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =             H_100_eV_soc
+        #     hopping in y direction
+        sys[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =             H_010_eV_soc
+        #     hopping in z direction
+        sys[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =             H_001_eV_soc
+
+
+
+    # Diagonal hopping
+        #xy direction
+        sys[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =             H_110_eV_soc
+        # x(-)y direction
+        sys[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =             H_1m10_eV_soc
+
+        #hopping yz
+        sys[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =             H_011_eV_soc
+        #hopping y(-)z:V
+        sys[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =             H_01m1_eV_soc
+
+        #hopping xz
+        sys[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =              H_101_eV_soc
+        #hopping x(-)z:V
+        sys[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =             H_10m1_eV_soc
+
+
+        return sys 
+    
+    sys = sys_gold(nlayers,Txz,Tyz,xi_d,0)
+    
+    sys_reversed = sys_gold(nlayers,Txz,Tyz,xi_d,d_L)
+
+    sys.update(sys_reversed)
+    
+    
+    
+     # Lead0 : Unmagnetized
+    lead0_sym =  kwant.TranslationalSymmetry((-0.5,-0.5,0))
+    lead0 = kwant.Builder(lead0_sym, conservation_law = sigmaz_18)
+    lead0[(lat_fcc(0,j,k)  
                          for j in range(0,Txz) 
-                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18) + B*sigmazz_18
+                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18)  
           
             
             
-    #Lead1 hopping
+    #lead0 hopping
     #     hopping in x direction
-    lead2[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
+    lead0[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
     #     hopping in y direction
-    lead2[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_010_eV_soc
+    lead0[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_010_eV_soc
     #     hopping in z direction
-    lead2[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+    lead0[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
 
     
     
     # Diagonal hopping
     #xy direction
-    lead2[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_110_eV_soc
+    lead0[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_110_eV_soc
     # x(-)y direction
-    lead2[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
+    lead0[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
     
     #hopping yz
-    lead2[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_011_eV_soc
+    lead0[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_011_eV_soc
     #hopping y(-)z:V
-    lead2[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_01m1_eV_soc
+    lead0[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_01m1_eV_soc
     
     #hopping xz
-    lead2[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
+    lead0[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
     #hopping x(-)z:V
-    lead2[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
+    lead0[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
+                         
+    
+    sys.attach_lead(lead0)
     
     
-    sys.attach_lead(lead2)
+    # Lead1: Magnetized 
+    lead1_sym =  kwant.TranslationalSymmetry((0.5,0.5,0))
+    lead1 = kwant.Builder(lead1_sym, conservation_law = sigmaz_18)
+    lead1[(lat_fcc(d_L+nlayers,j,k)  
+                         for j in range(0,Txz) 
+                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18)  + B*sigmazz_18
+          
+            
+            
+    #Lead1 hopping
+    #     hopping in x direction
+    lead1[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
+    #     hopping in y direction
+    lead1[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_010_eV_soc
+    #     hopping in z direction
+    lead1[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+
+    
+    
+    # Diagonal hopping
+    #xy direction
+    lead1[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_110_eV_soc
+    # x(-)y direction
+    lead1[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
+    
+    #hopping yz
+    lead1[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_011_eV_soc
+    #hopping y(-)z:V
+    lead1[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_01m1_eV_soc
+    
+    #hopping xz
+    lead1[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
+    #hopping x(-)z:V
+    lead1[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
+    
+    
+    sys.attach_lead(lead1)
     
     return sys
     
@@ -753,10 +925,7 @@ def sys_gold_bulk(nlayers,Txz,Tyz,xi_d,Txy):
 
 
 
-
-
-# This system make_fcc_lead where y-> -y, this corresponds to changing all hoppings as: H_{l,m,n} -> H_{l,-m,n} 
-def make_fcc_lead_chiral_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0,B=1,quantization_axis=sigma_z):
+def make_fcc_lead_chiral_magnetized_left(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0,B=1,quantization_axis=sigma_z):
     
     """
     Input:
@@ -770,7 +939,8 @@ def make_fcc_lead_chiral_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0
     Ouput:
     - finalzed kwant system which contains two blocks of gold atoms with dimensions nlayers X Txz X Tyz
     - Each block has a lead attached.  
-    - The hopping matrices of gold have been changes:H_{l,m,n} -> H_{l,-m,n} """
+    - The hopping matrices of gold have been changes:H_{l,m,n} -> H_{l,-m,n} 
+    - lead1: magnetized"""
     
     
     lat_fcc = kwant.lattice.general([
@@ -838,7 +1008,169 @@ def make_fcc_lead_chiral_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0
 
 
 
-     # Lead 
+     # Lead1: Magnetized 
+    lead1_sym =  kwant.TranslationalSymmetry((-0.5,-0.5,0))
+    lead1 = kwant.Builder(lead1_sym, conservation_law = sigmaz_18)
+    lead1[(lat_fcc(0,j,k)  
+                         for j in range(0,Txz) 
+                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18)  + B*sigmazz_18
+
+
+
+    #Lead1 hopping
+    #     hopping in x direction
+    lead1[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
+    #     hopping in y direction
+    lead1[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_0m10_eV_soc
+    #     hopping in z direction
+    lead1[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+
+
+
+    # Diagonal hopping
+    #xy direction
+    lead1[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
+    # x(-)y direction
+    lead1[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_110_eV_soc
+
+    #hopping yz
+    lead1[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_0m11_eV_soc
+    #hopping y(-)z:V
+    lead1[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_0m1m1_eV_soc
+
+    #hopping xz
+    lead1[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
+    #hopping x(-)z:V
+    lead1[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
+
+
+    sys.attach_lead(lead1)
+
+
+    # Lead2: Unmagnetized
+    lead2_sym =  kwant.TranslationalSymmetry((0.5,0.5,0))
+    lead2 = kwant.Builder(lead2_sym, conservation_law = sigmaz_18)
+    lead2[(lat_fcc(d_L+nlayers,j,k)  
+                         for j in range(0,Txz) 
+                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18) 
+
+
+
+    #Lead1 hopping
+    #     hopping in x direction
+    lead2[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
+    #     hopping in y direction
+    lead2[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_0m10_eV_soc
+    #     hopping in z direction
+    lead2[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+
+
+
+    # Diagonal hopping
+    #xy direction
+    lead2[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
+    # x(-)y direction
+    lead2[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_110_eV_soc
+
+    #hopping yz
+    lead2[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_0m11_eV_soc
+    #hopping y(-)z:V
+    lead2[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_0m1m1_eV_soc
+
+    #hopping xz
+    lead2[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
+    #hopping x(-)z:V
+    lead2[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
+
+
+    sys.attach_lead(lead2)
+
+    return sys
+
+def make_fcc_lead_chiral_magnetized_right(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0,B=1,quantization_axis=sigma_z):
+    
+    """
+    Input:
+    - nlayers = thickness of the layers of gold atoms that feel SOC
+    - Txz, Tyz = dimensions of the plain gold atoms that feel SOC
+    - d_L = distance between the two blocks of gold atoms.
+    - xi_d = SOC parameter of 5d orbitals of gold
+    - delta_e = shift in onsite energies of gold to align it to the proper fermi level.
+    - B = magnetization of the left lead
+    - quantization_axis = axis along which spins are quantized. 
+    Ouput:
+    - finalzed kwant system which contains two blocks of gold atoms with dimensions nlayers X Txz X Tyz
+    - Each block has a lead attached.  
+    - The hopping matrices of gold have been changes:H_{l,m,n} -> H_{l,-m,n} 
+    - lead 2 is magnetized"""
+    
+    
+    lat_fcc = kwant.lattice.general([
+                            ( 0.5, 0.5, 0), 
+                             (0.5, 0, 0.5),
+                             ( 0,0.5,0.5)
+                          ], norbs=18)
+
+
+
+    sigma_18 = np.identity(18)
+    sigmaz_18 = np.kron(np.identity(9),quantization_axis) 
+    sigmazz_18 = np.kron(np.identity(9),sigma_z) 
+
+    #n_layers = number of layers with strong SOC
+    # Txy = Start value for the gold layer in xy plane.
+
+    # Make a block of shape nlayers*Txz*Tyz with onsite soc xi_d.
+    def sys_gold(nlayers,Txz,Tyz,xi_d,Txy):
+
+        sys = kwant.Builder()  
+        H_onsite = np.add(H_at_ev_soc,H_SO(xi_d)) + delta_e*np.identity(18)         
+
+
+        #FCC lattice
+        sys[(lat_fcc(d ,j,k) for d in range(Txy, Txy+nlayers) 
+                             for j in range(0,Txz) 
+                             for k in range(0,Tyz))] = H_onsite
+
+
+        #Lattice hopping
+        #     hopping in x direction
+        sys[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =             H_100_eV_soc
+        #     hopping in y direction
+        sys[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =             H_0m10_eV_soc
+        #     hopping in z direction
+        sys[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =             H_001_eV_soc
+
+
+
+    # Diagonal hopping
+        #xy direction
+        sys[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =             H_1m10_eV_soc
+        # x(-)y direction
+        sys[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =             H_110_eV_soc
+
+        #hopping yz
+        sys[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =             H_0m11_eV_soc
+        #hopping y(-)z:V
+        sys[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =             H_0m1m1_eV_soc
+
+        #hopping xz
+        sys[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =              H_101_eV_soc
+        #hopping x(-)z:V
+        sys[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =             H_10m1_eV_soc
+
+
+        return sys 
+
+    sys = sys_gold(nlayers,Txz,Tyz,xi_d,0)
+
+    sys_reversed = sys_gold(nlayers,Txz,Tyz,xi_d,d_L)
+
+    sys.update(sys_reversed)
+
+
+
+     # Lead 1: Not magnetized
     lead1_sym =  kwant.TranslationalSymmetry((-0.5,-0.5,0))
     lead1 = kwant.Builder(lead1_sym, conservation_law = sigmaz_18)
     lead1[(lat_fcc(0,j,k)  
@@ -877,7 +1209,7 @@ def make_fcc_lead_chiral_magnetized(nlayers, Txz,Tyz,d_L= 12, xi_d=0.6,delta_e=0
     sys.attach_lead(lead1)
 
 
-    # Magnetized: Lead 
+    # Lead2: Magnetized 
     lead2_sym =  kwant.TranslationalSymmetry((0.5,0.5,0))
     lead2 = kwant.Builder(lead2_sym, conservation_law = sigmaz_18)
     lead2[(lat_fcc(d_L+nlayers,j,k)  
@@ -1271,31 +1603,15 @@ def make_fcc_lead_chiral_hop_magnetized_voltage(nlayers,V, Txz,Tyz,d_L= 12, xi_d
 
 
 
-def make_fcc_lead_magnetized_buttikkerprobe(nlayers, Txz,Tyz,d_L= 12, 
-                                            xi_d=0.6,delta_e=0,B=1,
-                                            u0=-5.3,t0=10, 
-                                            quantization_axis=sigma_z):
+
+
+
+
+
+
+def magnetized_WBL_lead_LR(nlayers, Txz,Tyz, gamma, B,d_L= 12):
     
-    
-    """ 
-     Input:
-    - nlayers = thickness of the layers of gold atoms that feel SOC
-    - Txz, Tyz = dimensions of the plain gold atoms that feel SOC
-    - d_L = distance between the two blocks of gold atoms.
-    - xi_d = SOC parameter of 5d orbitals of gold
-    - delta_e = shift in onsite energies of gold to align it to the proper fermi level.
-    - B = magnetization of the left lead
-    - u0 = onsite energy of Buttiker probe
-    - t0 = hopping parameter of Buttiker probe.
-    - quantization_axis = axis along which spins are quantized. 
-    Ouput:
-    - finalzed kwant system which contains two blocks of gold atoms where one block has a Buttiker probe attached. 
-    - Each block has a lead attached. The left lead can be magnetized. 
-    - gold system with shift of onsite energies of the lead due to applied bias voltages.
-    - The hopping matrices of gold have been changes:H_{l,m,n} -> H_{l,-m,n}
-    """
-    
-    
+    sigmazz_18 = np.kron(np.identity(9),sigma_z) 
     lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
                                  (0.5, 0, 0.5),
                                  ( 0,0.5,0.5)
@@ -1303,167 +1619,199 @@ def make_fcc_lead_magnetized_buttikkerprobe(nlayers, Txz,Tyz,d_L= 12,
     
     
      
-    sigma_18 = np.identity(18)
-    sigmaz_18 = np.kron(np.identity(9),quantization_axis) 
-    sigmazz_18 = np.kron(np.identity(9),sigma_z) 
+    def gold_gamma_L(nlayers,Txz,Tyz,Txy,gamma,B):
+
+        gold_system = kwant.Builder()  
+        lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
     
-    #n_layers = number of layers with strong SOC
-    # Txy = Start value for the gold layer in xy plane.
-     
-    # Make a block of shape nlayers*Txz*Tyz with onsite soc xi_d.
-    def sys_gold(nlayers,Txz,Tyz,xi_d,Txy):
-
-        sys = kwant.Builder()  
-        
-        
-        H_onsite = np.add(H_at_ev_soc,H_SO(xi_d)) + delta_e*np.identity(18) 
-#         
-
-       
-
-
+    
         #FCC lattice
         
+        for i in range(Txy,Txy+nlayers):
+            if i == Txy:
+                gold_system[( lat_fcc(i,j,k)  
+                                        for j in range(Txz)
+                                        for k in range(Tyz))]  = gamma*np.identity(18) + B*sigmazz_18
+            if i != Txy:
+                gold_system[( lat_fcc(i,j,k)  
+                                        for j in range(Txz)
+                                        for k in range(Tyz))]  = 0*np.identity(18)
 
-        sys[(lat_fcc(d ,j,k) for d in range(Txy, Txy+nlayers) 
-                             for j in range(0,Txz) 
-                             for k in range(0,Tyz))] = H_onsite
-
-
-        #Lattice hopping
-        #     hopping in x direction
-        sys[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =             H_100_eV_soc
-        #     hopping in y direction
-        sys[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =             H_010_eV_soc
-        #     hopping in z direction
-        sys[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =             H_001_eV_soc
-
-
-
-    # Diagonal hopping
-        #xy direction
-        sys[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =             H_110_eV_soc
-        # x(-)y direction
-        sys[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =             H_1m10_eV_soc
-
-        #hopping yz
-        sys[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =             H_011_eV_soc
-        #hopping y(-)z:V
-        sys[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =             H_01m1_eV_soc
-
-        #hopping xz
-        sys[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =              H_101_eV_soc
-        #hopping x(-)z:V
-        sys[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =             H_10m1_eV_soc
-
-
-        return sys 
-    
-    sys = sys_gold(nlayers,Txz,Tyz,xi_d,0)
-    
-    sys_reversed = sys_gold(nlayers,Txz,Tyz,xi_d,d_L)
-
-    sys.update(sys_reversed)
+        return gold_system
     
     
+    def gold_gamma_R(nlayers,Txz,Tyz,Txy,gamma):
+
+        gold_system = kwant.Builder()  
+        lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
     
-     # Lead 
-    lead1_sym =  kwant.TranslationalSymmetry((-0.5,-0.5,0))
-    lead1 = kwant.Builder(lead1_sym, conservation_law = sigmaz_18)
-    lead1[(lat_fcc(0,j,k)  
-                         for j in range(0,Txz) 
-                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18) 
-          
+    
+        #FCC lattice
+        
+        for i in range(Txy,Txy+nlayers):
+            if i == Txy+nlayers-1:
+                gold_system[( lat_fcc(i,j,k)  
+                                        for j in range(Txz)
+                                        for k in range(Tyz))]  = gamma*np.identity(18)
+            if i != Txy+nlayers-1:
+                gold_system[( lat_fcc(i,j,k)  
+                                        for j in range(Txz)
+                                        for k in range(Tyz))]  = 0*np.identity(18)
+
+        return gold_system
+    
+    def gold_empty(nlayers,Txz,Tyz,Txy):
+
+        sys_empty = kwant.Builder()  
+        lat_fcc = kwant.lattice.general([(0.5, 0.5,   0), 
+                                         (0.5, 0  , 0.5),
+                                         (0  ,0.5 , 0.5)
+                              ], norbs=18)
+    
+    
+        #FCC lattice
+        
+        sys_empty[( lat_fcc(i,j,k) 
+                                for i in range(Txy,Txy+nlayers)
+                                for j in range(Txz)
+                                for k in range(Tyz))]  = 0*np.identity(18)
             
+                
+
+        return sys_empty 
+    
+    #Make left gamma
+    sys_left = gold_gamma_L(nlayers,Txz,Tyz,0,gamma,B)
+    sys_left_empty = gold_empty(nlayers,Txz,Tyz,d_L)
+    sys_left.update(sys_left_empty)
+    
+    #Make right gamma
+    sys_right_empty      = gold_empty(nlayers,Txz,Tyz,0)
+    sys_right = gold_gamma_R(nlayers,Txz,Tyz,d_L,gamma)
+    sys_right.update(sys_right_empty)
+
+    
+    
+    return sys_left,sys_right
+
+
+
+
+def gold_all_empty(nlayers, Txz,Tyz,d_L= 12):
+    
+    sigmazz_18 = np.kron(np.identity(9),sigma_z) 
+    lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
+    
+    
+     
+    def gold_gamma_L(nlayers,Txz,Tyz,Txy,gamma,B):
+
+        gold_system = kwant.Builder()  
+        lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
+    
+    
+        #FCC lattice
+        
+        for i in range(Txy,Txy+nlayers):
+            if i == Txy:
+                gold_system[( lat_fcc(i,j,k)  
+                                        for j in range(Txz)
+                                        for k in range(Tyz))]  = gamma*np.identity(18) + B*sigmazz_18
+            if i != Txy:
+                gold_system[( lat_fcc(i,j,k)  
+                                        for j in range(Txz)
+                                        for k in range(Tyz))]  = 0*np.identity(18)
+
+        return gold_system
+    
+    
+    
+    
+    def gold_empty(nlayers,Txz,Tyz,Txy):
+
+        sys_empty = kwant.Builder()  
+        lat_fcc = kwant.lattice.general([(0.5, 0.5,   0), 
+                                         (0.5, 0  , 0.5),
+                                         (0  ,0.5 , 0.5)
+                              ], norbs=18)
+    
+    
+        #FCC lattice
+        
+        sys_empty[( lat_fcc(i,j,k) 
+                                for i in range(Txy,Txy+nlayers)
+                                for j in range(Txz)
+                                for k in range(Tyz))]  = 0*np.identity(18)
             
-    #Lead1 hopping
-    #     hopping in x direction
-    lead1[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
-    #     hopping in y direction
-    lead1[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_010_eV_soc
-    #     hopping in z direction
-    lead1[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+                
+
+        return sys_empty 
+    
+    #Make left gamma
+    sys_left = gold_gamma_L(nlayers,Txz,Tyz,0,0,0)
+    sys_left_empty = gold_empty(nlayers,Txz,Tyz,d_L)
+    sys_left.update(sys_left_empty)
+    
+   
+    
+    return sys_left
+
+
+
+
+def gold_empty_blocks(nlayers, Txz,Tyz,d_L= 12):
+    
+    sigmazz_18 = np.kron(np.identity(9),sigma_z) 
+    lat_fcc = kwant.lattice.general([( 0.5, 0.5, 0), 
+                                 (0.5, 0, 0.5),
+                                 ( 0,0.5,0.5)
+                              ], norbs=18)
+    
+    
+     
 
     
-    
-    # Diagonal hopping
-    #xy direction
-    lead1[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_110_eV_soc
-    # x(-)y direction
-    lead1[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
-    
-    #hopping yz
-    lead1[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_011_eV_soc
-    #hopping y(-)z:V
-    lead1[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_01m1_eV_soc
-    
-    #hopping xz
-    lead1[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
-    #hopping x(-)z:V
-    lead1[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
-                         
-    
-    sys.attach_lead(lead1)
+    def gold_empty(nlayers,Txz,Tyz,Txy):
+
+        sys_empty = kwant.Builder()  
+        lat_fcc = kwant.lattice.general([(0.5, 0.5,   0), 
+                                         (0.5, 0  , 0.5),
+                                         (0  ,0.5 , 0.5)
+                              ], norbs=18)
     
     
-    # Magnetized: Lead 
-    lead2_sym =  kwant.TranslationalSymmetry((0.5,0.5,0))
-    lead2 = kwant.Builder(lead2_sym, conservation_law = sigmaz_18)
-    lead2[(lat_fcc(d_L+nlayers,j,k)  
-                         for j in range(0,Txz) 
-                         for k in range(0,Tyz))] = H_at_ev_soc+ delta_e*np.identity(18) + B*sigmazz_18
-          
+        #FCC lattice
+        
+        sys_empty[( lat_fcc(i,j,k) 
+                                for i in range(Txy,Txy+nlayers)
+                                for j in range(Txz)
+                                for k in range(Tyz))]  = 0*np.identity(18)
             
-            
-    #Lead1 hopping
-    #     hopping in x direction
-    lead2[kwant.builder.HoppingKind((1,1,-1), lat_fcc, lat_fcc)] =         H_100_eV_soc
-    #     hopping in y direction
-    lead2[kwant.builder.HoppingKind((1,-1,1), lat_fcc, lat_fcc)] =         H_010_eV_soc
-    #     hopping in z direction
-    lead2[kwant.builder.HoppingKind((-1,1,1), lat_fcc, lat_fcc)] =         H_001_eV_soc
+                
+
+        return sys_empty 
+    
+    #Make left gamma
+    sys_left_empty_left =   gold_empty(nlayers,Txz,Tyz,0)
+    sys_left_empty_right = gold_empty(nlayers,Txz,Tyz,d_L)
+    sys_left_empty_left.update(sys_left_empty_right)
+
 
     
     
-    # Diagonal hopping
-    #xy direction
-    lead2[kwant.builder.HoppingKind((1,0,0), lat_fcc, lat_fcc)] =         H_110_eV_soc
-    # x(-)y direction
-    lead2[kwant.builder.HoppingKind((0,1,-1), lat_fcc, lat_fcc)] =         H_1m10_eV_soc
-    
-    #hopping yz
-    lead2[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] =         H_011_eV_soc
-    #hopping y(-)z:V
-    lead2[kwant.builder.HoppingKind((1,-1,0), lat_fcc, lat_fcc)] =         H_01m1_eV_soc
-    
-    #hopping xz
-    lead2[kwant.builder.HoppingKind((0,1,0), lat_fcc, lat_fcc)] =          H_101_eV_soc
-    #hopping x(-)z:V
-    lead2[kwant.builder.HoppingKind((1,0,-1), lat_fcc, lat_fcc)] =         H_10m1_eV_soc
-    
-    
-    sys.attach_lead(lead2)
-    
-    H_os_buttiker_18 = u0*np.identity(18)
-    # Magnetized: Lead 
-    lead_buttiker_sym =  kwant.TranslationalSymmetry((0,0.5,0.5))
-    lead_buttiker = kwant.Builder(lead_buttiker_sym, conservation_law = sigmaz_18)
-    
-    lead_buttiker[lat_fcc(nlayers-1 ,Txz-1,Tyz) ] = H_os_buttiker_18
-    lead_buttiker[kwant.builder.HoppingKind((0,0,1), lat_fcc, lat_fcc)] = -t0*np.identity(18)              
-                   
-    sys.attach_lead(lead_buttiker)      
-                   
-    
-    return sys
-
-
-
-
-
-
-
-
+    return sys_left_empty_left
 
 
 
