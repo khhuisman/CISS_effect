@@ -23,11 +23,6 @@ sigma_y = tinyarray.array([[0, -1j], [1j, 0]])
 sigma_z = tinyarray.array([[1, 0], [0, -1]])
 
 
-# In[2]:
-
-
-import sys
-sys.path.insert(0, '/Users/khhuisman/Documents/Jupyter_notebooks/py_files')
 
 
 # In[3]:
@@ -214,7 +209,10 @@ def index_list_adjusted(IP_list_2,IM_list_2,V_list,nacc=7,plot_current=True):
 
 def calc_MR_list(IP_list_0,IM_list_0,V_list):
     
-    """Input: Currents into left lead for plus/minus magnetization of the lead, for the voltages in V_list.       Ouput: MR for the voltages in V_list"""
+    """Input: 
+    Currents into left lead for plus/minus magnetization of the lead, for the voltages in V_list.      
+    Ouput: 
+    MR for the voltages in V_list"""
     #At V = 0 we must have I(m) +I(-m) = 0
     # numerically we often find:  I(m) +I(-m) = 10**-12, which leads to division of a small number in the MR.
     # therefore I round I(m) +I(-m) with n:
@@ -300,21 +298,8 @@ import PlotFunctions
 # In[9]:
 
 
-import PlotSelfEnergy
-
 
 # ### Test system
-
-# In[10]:
-
-
-
-# # Formulas for calculating currents
-
-# In[13]:
-
-
-import CalculateEnergyCurrentNT
 
 
 # In[14]:
@@ -329,7 +314,7 @@ import CalculateCurrentN
 def muB_selfconsistent(ef,V_list,nleads,list_tags_transmissions,energies,system,print_bool,tol = 10**-17):
 
     ''' Input:
-    - ef = fermi level
+    - ef = fermi level/fermi energy
     - V_list = list of voltages, first value (V_list[0]) should be close to ZERO. 
             Important: Always start with a small first voltage to improve convergence speed 
     - nleads = number of leads (terminals) attached to the scattering region.
