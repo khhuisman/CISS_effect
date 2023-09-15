@@ -19,3 +19,5 @@ We add Büttiker voltage probes to the scattering region and calculate the curre
 From that we calculate i) the MR (the size of the effect) and ii) the odd and even part of the difference between the currents for opposite magnetizations of the lead.
 
 In the folder Modules you can find the modules that are used in this calculation.
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
